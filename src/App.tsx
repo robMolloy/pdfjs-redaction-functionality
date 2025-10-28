@@ -1,8 +1,11 @@
 import type { TextItem } from "pdfjs-dist/types/src/display/api";
+import { Routes, Route, Link } from "react-router-dom";
 import { useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { HomePage } from "./pages/HomePage";
+import { AboutPage } from "./pages/AboutPage";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -42,6 +45,23 @@ function App() {
 
   return (
     <div>
+      <div className="app">
+        <nav>
+          <ul>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/about">About</Link>
+            </li>
+          </ul>
+        </nav>
+
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/about" element={<AboutPage />} />
+        </Routes>
+      </div>
       <button onClick={() => setScale((scale) => (scale += 0.25))}>++++</button>
       <button onClick={() => setScale((scale) => (scale -= 0.25))}>----</button>
       <button onClick={() => setScale(1)}>Reset</button>
@@ -91,23 +111,19 @@ function App() {
 
               const clickPos = { x, y };
 
-              if (!firstCorner) {
-                // First click: set first corner
-                setFirstCorner(clickPos);
-              } else {
-                // Second click: create box and reset
-                setRedactionOverlays([
-                  ...redactionOverlays,
-                  {
-                    key: createSimpleId(),
-                    x1: firstCorner.x,
-                    y1: firstCorner.y,
-                    x2: clickPos.x,
-                    y2: clickPos.y,
-                  },
-                ]);
-                setFirstCorner(null);
-              }
+              if (!firstCorner) return setFirstCorner(clickPos);
+
+              setRedactionOverlays([
+                ...redactionOverlays,
+                {
+                  key: createSimpleId(),
+                  x1: firstCorner.x,
+                  y1: firstCorner.y,
+                  x2: clickPos.x,
+                  y2: clickPos.y,
+                },
+              ]);
+              setFirstCorner(null);
             }}
             renderAnnotationLayer={true}
             renderTextLayer={true}

@@ -24,16 +24,19 @@ function App() {
   const [numPages, setNumPages] = useState<number>();
   const [pageNumber, setPageNumber] = useState<number>(1);
 
-  const [redactions, setRedactions] = useState<TRedactionOverlay[]>([]);
-
-  const [itemsWithPosition, setItemsWithPosition] = useState<TLinkOverlay[]>(
-    []
-  );
-  const [pageHeight, setPageHeight] = useState<number>(0);
+  const [linkOverlays, setLinkOverlays] = useState<TLinkOverlay[]>([]);
   const [scale, setScale] = useState<number>(1);
-
-  const [coord1, setCoord1] = useState<{ x: number; y: number } | null>(null);
-  const [coord2, setCoord2] = useState<{ x: number; y: number } | null>(null);
+  const [redactionOverlays, setRedactionOverlays] = useState<
+    TRedactionOverlay[]
+  >([]);
+  const [unscaledPageHeight, setUnscaledPageHeight] = useState<number>(0);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
+    null
+  );
+  const [firstCorner, setFirstCorner] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const requestAnimationFrameRef = useRef<number | null>(null);
 
@@ -43,11 +46,17 @@ function App() {
       <button onClick={() => setScale((scale) => (scale -= 0.25))}>----</button>
       <button onClick={() => setScale(1)}>Reset</button>
       <br />
-      scale: {scale}
+      Scale: {scale}
       <br />
-      redactLength: {redactions.length}
+      Mouse:{" "}
+      {mousePos
+        ? `x: ${mousePos.x.toFixed(2)}, y: ${mousePos.y.toFixed(2)}`
+        : "N/A"}
       <br />
-      {JSON.stringify({ coord1 })}
+      First Corner:{" "}
+      {firstCorner
+        ? `x: ${firstCorner.x.toFixed(2)}, y: ${firstCorner.y.toFixed(2)}`
+        : "N/A"}
       <br />
       <br />
       <div style={{ position: "relative" }}>
@@ -56,52 +65,59 @@ function App() {
           onLoadSuccess={(x) => setNumPages(x.numPages)}
         >
           <Page
+            pageNumber={1}
+            scale={scale}
             onMouseMove={(e) => {
-              if (requestAnimationFrameRef.current) return; // Skip if already scheduled
+              if (!e.target.className.includes("react-pdf__Page__textContent"))
+                return;
+
+              if (requestAnimationFrameRef.current) return;
 
               requestAnimationFrameRef.current = requestAnimationFrame(() => {
-                console.log(e);
                 const rect = e.target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = pageHeight - (e.clientY - rect.top);
-                if (coord1) setCoord2({ x, y });
-
+                const x = (e.clientX - rect.left) / scale;
+                const screenY = (e.clientY - rect.top) / scale;
+                const y = unscaledPageHeight - screenY; // Convert to bottom-left origin
+                setMousePos({ x, y });
                 requestAnimationFrameRef.current = null;
               });
             }}
+            onMouseLeave={() => setMousePos(null)}
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const y = pageHeight - (e.clientY - rect.top);
+              const x = (e.clientX - rect.left) / scale;
+              const screenY = (e.clientY - rect.top) / scale;
+              const y = unscaledPageHeight - screenY;
 
-              const currentCoord1 = coord1;
+              const clickPos = { x, y };
 
-              if (!currentCoord1) return setCoord1({ x, y });
-
-              setRedactions((curr) => [
-                ...curr,
-                {
-                  key: createSimpleId(),
-                  x1: currentCoord1.x,
-                  y1: currentCoord1.y,
-                  x2: x,
-                  y2: y,
-                },
-              ]);
-
-              setCoord1(null);
-              setCoord2(null);
+              if (!firstCorner) {
+                // First click: set first corner
+                setFirstCorner(clickPos);
+              } else {
+                // Second click: create box and reset
+                setRedactionOverlays([
+                  ...redactionOverlays,
+                  {
+                    key: createSimpleId(),
+                    x1: firstCorner.x,
+                    y1: firstCorner.y,
+                    x2: clickPos.x,
+                    y2: clickPos.y,
+                  },
+                ]);
+                setFirstCorner(null);
+              }
             }}
-            scale={scale}
-            pageNumber={pageNumber}
             renderAnnotationLayer={true}
             renderTextLayer={true}
             onGetAnnotationsSuccess={(annotations) =>
               console.log({ annotations })
             }
-            onLoadSuccess={(page): void => {
-              const viewport = page.getViewport({ scale });
-              setPageHeight(viewport.height);
+            onLoadSuccess={(page) => {
+              const viewport = page.getViewport({ scale: 1 });
+
+              setUnscaledPageHeight(viewport.height);
 
               page
                 .getAnnotations()
@@ -134,7 +150,7 @@ function App() {
                   return newItem;
                 });
 
-                setItemsWithPosition(newItems);
+                setLinkOverlays(newItems);
 
                 const textArray = newItems.map((x) => x.str);
                 // @ts-expect-error
@@ -147,11 +163,12 @@ function App() {
             }}
           />
         </Document>
-        {itemsWithPosition.map((itm, index) => {
-          const xMin = itm.x1 < itm.x2 ? itm.x1 : itm.x2;
-          const xMax = itm.x1 > itm.x2 ? itm.x1 : itm.x2;
-          const yMin = itm.y1 < itm.y2 ? itm.y1 : itm.y2;
-          const yMax = itm.y1 > itm.y2 ? itm.y1 : itm.y2;
+
+        {linkOverlays.map((itm, index) => {
+          const xMin = Math.min(itm.x1, itm.x2);
+          const xMax = Math.max(itm.x1, itm.x2);
+          const yMin = Math.min(itm.y1, itm.y2);
+          const yMax = Math.max(itm.y1, itm.y2);
           const width = xMax - xMin;
           const height = yMax - yMin;
 
@@ -164,77 +181,95 @@ function App() {
               style={{
                 position: "absolute",
                 left: `${xMin * scale}px`,
-                top: `${pageHeight - (yMin + height) * scale}px`,
+                top: `${(unscaledPageHeight - yMin - height) * scale}px`,
                 width: `${width * scale}px`,
                 height: `${height * scale}px`,
                 background: "rgba(0, 100, 255, 0.2)",
                 border: "1px solid blue",
-                zIndex: 99,
+                pointerEvents: "none",
               }}
               title="Click to visit Google"
             />
           );
         })}
-        {coord1 &&
-          coord2 &&
+
+        {/* Redactions */}
+        {redactionOverlays.map((box, i) => {
+          const xMin = Math.min(box.x1, box.x2);
+          const xMax = Math.max(box.x1, box.x2);
+          const yMin = Math.min(box.y1, box.y2);
+          const yMax = Math.max(box.y1, box.y2);
+          const width = xMax - xMin;
+          const height = yMax - yMin;
+
+          return (
+            <div
+              key={i}
+              style={{
+                position: "absolute",
+                left: `${xMin * scale}px`,
+                bottom: `${yMin * scale}px`,
+                width: `${width * scale}px`,
+                height: `${height * scale}px`,
+                background: "rgba(255, 0, 0, 0.3)",
+                border: "2px solid red",
+                pointerEvents: "none",
+              }}
+            />
+          );
+        })}
+
+        {/* Preview rectangle while selecting */}
+        {firstCorner &&
+          mousePos &&
           (() => {
-            const x1 = coord1.x;
-            const x2 = coord2.x;
-            const y1 = coord1.y;
-            const y2 = coord2.y;
-            const xMin = x1 < x2 ? x1 : x2;
-            const xMax = x1 > x2 ? x1 : x2;
-            const yMin = y1 < y2 ? y1 : y2;
-            const yMax = y1 > y2 ? y1 : y2;
+            const xMin = Math.min(firstCorner.x, mousePos.x);
+            const xMax = Math.max(firstCorner.x, mousePos.x);
+            const yMin = Math.min(firstCorner.y, mousePos.y);
+            const yMax = Math.max(firstCorner.y, mousePos.y);
             const width = xMax - xMin;
             const height = yMax - yMin;
 
             return (
-              <span
+              <div
                 style={{
                   position: "absolute",
                   left: `${xMin * scale}px`,
-                  top: `${pageHeight - (yMin + height) * scale}px`,
+                  bottom: `${yMin * scale}px`,
                   width: `${width * scale}px`,
                   height: `${height * scale}px`,
-                  background: "black",
-                  border: "1px solid red",
+                  background: "rgba(0, 0, 255, 0.2)",
+                  border: "2px dashed blue",
                   pointerEvents: "none",
                   zIndex: 99,
                 }}
               />
             );
           })()}
-        {redactions.map((itm) => {
-          const xMin = itm.x1 < itm.x2 ? itm.x1 : itm.x2;
-          const xMax = itm.x1 > itm.x2 ? itm.x1 : itm.x2;
-          const yMin = itm.y1 < itm.y2 ? itm.y1 : itm.y2;
-          const yMax = itm.y1 > itm.y2 ? itm.y1 : itm.y2;
-          const width = xMax - xMin;
-          const height = yMax - yMin;
 
-          return (
-            <span
-              key={itm.key}
-              style={{
-                position: "absolute",
-                left: `${xMin * scale}px`,
-                top: `${pageHeight - (yMin + height) * scale}px`,
-                width: `${width * scale}px`,
-                height: `${height * scale}px`,
-                background: "black",
-                border: "1px solid red",
-                zIndex: 99,
-              }}
-            />
-          );
-        })}
+        {/* Mouse cursor indicator */}
+        {mousePos && (
+          <div
+            style={{
+              position: "absolute",
+              left: `${mousePos.x * scale}px`,
+              bottom: `${mousePos.y * scale}px`,
+              width: "10px",
+              height: "10px",
+              background: "blue",
+              borderRadius: "50%",
+              pointerEvents: "none",
+              transform: "translate(-50%, 50%)",
+              opacity: 0.5,
+            }}
+          />
+        )}
       </div>
       <p>
-        Page {pageNumber} of {numPages} (Page Height: {pageHeight}px)
+        Page {pageNumber} of {numPages} (Page Height: {unscaledPageHeight}px)
       </p>
       <div onClick={() => setPageNumber((x) => x + 1)}>inc</div>
-      <pre>{JSON.stringify(itemsWithPosition, null, 2)}</pre>
+      <pre>{JSON.stringify(linkOverlays, null, 2)}</pre>
     </div>
   );
 }

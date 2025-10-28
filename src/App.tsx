@@ -1,5 +1,3 @@
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
 import { Link, Route, Routes } from "react-router-dom";
 import { MouseCursorOnlyPage } from "./pages/MouseCursorOnlyPage";
 import { OriginalPage } from "./pages/OriginalPage";

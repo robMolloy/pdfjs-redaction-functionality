@@ -1,6 +1,7 @@
 import { Link, Route, Routes } from "react-router-dom";
 import { MouseCursorOnlyPage } from "./pages/MouseCursorOnlyPage";
 import { OriginalPage } from "./pages/OriginalPage";
+import { HooksMouseCursorOnlyPage } from "./pages/HooksMouseCursorOnlyPage";
 
 function App() {
   return (
@@ -14,6 +15,11 @@ function App() {
             <li>
               <Link to="/mouseCursorOnlyPage">MouseCursorOnlyPage</Link>
             </li>
+            <li>
+              <Link to="/hooksMouseCursorOnlyPage">
+                HooksMouseCursorOnlyPage
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -22,6 +28,10 @@ function App() {
           <Route
             path="/mouseCursorOnlyPage"
             element={<MouseCursorOnlyPage />}
+          />
+          <Route
+            path="/hooksMouseCursorOnlyPage"
+            element={<HooksMouseCursorOnlyPage />}
           />
         </Routes>
       </div>

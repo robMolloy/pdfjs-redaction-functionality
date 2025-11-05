@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import type { PageCallback } from "react-pdf/dist/shared/types.js";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -23,22 +24,79 @@ const UninteractiveElementsStyleTag = () => (
         `}
   </style>
 );
+const InteractiveElementsStyleTag = () => <></>;
 
-export const HooksMouseCursorOnlyPage = () => {
-  const [scale, setScale] = useState<number>(1);
+const usePdfPageDimensions = (p: { initScale: number }) => {
+  const [scale, setScale] = useState<number>(p.initScale);
   const [unscaledPageHeight, setUnscaledPageHeight] = useState<number>(0);
+
+  const setPageHeightFromPage = (p: { page: PageCallback }) => {
+    const viewport = p.page.getViewport({ scale: 1 });
+    setUnscaledPageHeight(viewport.height);
+  };
+
+  return {
+    scale,
+    setScale,
+    unscaledPageHeight,
+    setUnscaledPageHeight,
+    setPageHeightFromPage,
+  };
+};
+
+const usePdfMousePosition = () => {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
 
-  const [interactiveMode, setInteractiveMode] = useState(true);
-
   const requestAnimationFrameRef = useRef<number | null>(null);
+
+  const handleMouseMove = (p: {
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>;
+    scale: number;
+    unscaledPageHeight: number;
+  }) => {
+    if (requestAnimationFrameRef.current) return;
+
+    requestAnimationFrameRef.current = requestAnimationFrame(() => {
+      const target = p.e.target as HTMLDivElement;
+      const rect = target.getBoundingClientRect();
+      const x = (p.e.clientX - rect.left) / p.scale;
+      const screenY = (p.e.clientY - rect.top) / p.scale;
+      const y = p.unscaledPageHeight - screenY;
+      setMousePos({ x, y });
+      requestAnimationFrameRef.current = null;
+    });
+  };
+
+  return { mousePos, setMousePos, handleMouseMove };
+};
+
+const usePdfInteractiveMode = (p: { initInteractiveMode: boolean }) => {
+  const [interactiveMode, setInteractiveMode] = useState(p.initInteractiveMode);
+
+  const StyleTag = interactiveMode
+    ? () => <></>
+    : UninteractiveElementsStyleTag;
+
+  const toggleInteractiveMode = () => setInteractiveMode((x) => !x);
+
+  return { interactiveMode, toggleInteractiveMode, StyleTag };
+};
+
+export const HooksMouseCursorOnlyPage = () => {
+  const { scale, setScale, unscaledPageHeight, setPageHeightFromPage } =
+    usePdfPageDimensions({ initScale: 1 });
+
+  const { mousePos, setMousePos, handleMouseMove } = usePdfMousePosition();
+
+  const { StyleTag, toggleInteractiveMode, interactiveMode } =
+    usePdfInteractiveMode({ initInteractiveMode: true });
 
   return (
     <div>
-      {!interactiveMode && <UninteractiveElementsStyleTag />}
-      <button onClick={() => setInteractiveMode((x) => !x)}>
+      <StyleTag />
+      <button onClick={() => toggleInteractiveMode()}>
         Current mode: {interactiveMode ? "Interactive" : "Uninteractive"}
       </button>
       <br />
@@ -55,27 +113,22 @@ export const HooksMouseCursorOnlyPage = () => {
         : "N/A"}
       <br />
       <br />
-      <div style={{ position: "relative" }}>
+      <div
+        onMouseMove={(e) => {
+          handleMouseMove({ e, scale, unscaledPageHeight });
+        }}
+        style={{ position: "relative" }}
+      >
         <Document file="http://localhost:5173/url_test_3.pdf">
           <Page
             pageNumber={1}
             scale={scale}
             onMouseMove={(e) => {
-              if (requestAnimationFrameRef.current) return;
-
-              requestAnimationFrameRef.current = requestAnimationFrame(() => {
-                const rect = e.target.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / scale;
-                const screenY = (e.clientY - rect.top) / scale;
-                const y = unscaledPageHeight - screenY;
-                setMousePos({ x, y });
-                requestAnimationFrameRef.current = null;
-              });
+              handleMouseMove({ e, scale, unscaledPageHeight });
             }}
             onMouseLeave={() => setMousePos(null)}
             onLoadSuccess={(page) => {
-              const viewport = page.getViewport({ scale: 1 });
-              setUnscaledPageHeight(viewport.height);
+              setPageHeightFromPage({ page });
             }}
           />
         </Document>

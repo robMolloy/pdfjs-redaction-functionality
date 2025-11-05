@@ -1,0 +1,12 @@
+.govuk-link {
+  cursor: pointer;
+  color: #1d70b8;
+
+  &:hover {
+    color: #003078
+  }
+  
+  &.disabled {
+    cursor: default;
+  }
+}

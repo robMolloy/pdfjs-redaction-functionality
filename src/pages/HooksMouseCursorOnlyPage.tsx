@@ -80,7 +80,7 @@ const usePdfInteractiveMode = (p: { initInteractiveMode: boolean }) => {
   const [interactiveMode, setInteractiveMode] = useState(p.initInteractiveMode);
 
   const StyleTag = interactiveMode
-    ? () => <></>
+    ? InteractiveElementsStyleTag
     : UninteractiveElementsStyleTag;
 
   const toggleInteractiveMode = () => setInteractiveMode((x) => !x);

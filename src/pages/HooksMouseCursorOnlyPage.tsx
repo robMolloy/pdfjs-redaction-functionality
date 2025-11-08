@@ -55,6 +55,7 @@ const usePdfMousePosition = () => {
     e: React.MouseEvent<HTMLDivElement, MouseEvent>;
     scale: number;
     unscaledPageHeight: number;
+    pagesFromBottom: number;
   }) => {
     if (requestAnimationFrameRef.current) return;
 
@@ -63,7 +64,10 @@ const usePdfMousePosition = () => {
       const rect = target.getBoundingClientRect();
       const x = (p.e.clientX - rect.left) / p.scale;
       const screenY = (p.e.clientY - rect.top) / p.scale;
-      const y = p.unscaledPageHeight - screenY;
+      const y =
+        p.unscaledPageHeight -
+        screenY +
+        p.pagesFromBottom * p.unscaledPageHeight;
       setMousePos({ x, y });
       requestAnimationFrameRef.current = null;
     });
@@ -85,6 +89,7 @@ const usePdfInteractiveMode = (p: { initInteractiveMode: boolean }) => {
 };
 
 export const HooksMouseCursorOnlyPage = () => {
+  const [numPages, setNumPages] = useState<number>();
   const { scale, setScale, unscaledPageHeight, setPageHeightFromPage } =
     usePdfPageDimensions({ initScale: 1 });
 
@@ -113,24 +118,61 @@ export const HooksMouseCursorOnlyPage = () => {
         : "N/A"}
       <br />
       <br />
-      <div
-        onMouseMove={(e) => {
-          handleMouseMove({ e, scale, unscaledPageHeight });
-        }}
-        style={{ position: "relative" }}
-      >
-        <Document file="http://localhost:5173/url_test_3.pdf">
-          <Page
+      <div style={{ position: "relative" }}>
+        <Document
+          file="http://localhost:5173/lots-of-pages-of-links.pdf"
+          onLoadSuccess={(x) => setNumPages(x.numPages)}
+        >
+          {[...Array(numPages)].map((_, j) => (
+            <Page
+              pageNumber={j + 1}
+              scale={scale}
+              onMouseMove={(e) => {
+                handleMouseMove({
+                  e,
+                  scale,
+                  unscaledPageHeight,
+                  pagesFromBottom: (numPages ?? 0) - 1 - j,
+                });
+              }}
+              onMouseLeave={() => setMousePos(null)}
+              onLoadSuccess={(page) => {
+                setPageHeightFromPage({ page });
+              }}
+            />
+          ))}
+          {/* <Page
             pageNumber={1}
             scale={scale}
             onMouseMove={(e) => {
-              handleMouseMove({ e, scale, unscaledPageHeight });
+              handleMouseMove({
+                e,
+                scale,
+                unscaledPageHeight,
+                pagesFromBottom: 1,
+              });
             }}
             onMouseLeave={() => setMousePos(null)}
             onLoadSuccess={(page) => {
               setPageHeightFromPage({ page });
             }}
-          />
+          /> */}
+          {/* <Page
+            pageNumber={2}
+            scale={scale}
+            onMouseMove={(e) => {
+              handleMouseMove({
+                e,
+                scale,
+                unscaledPageHeight,
+                pagesFromBottom: 0,
+              });
+            }}
+            onMouseLeave={() => setMousePos(null)}
+            onLoadSuccess={(page) => {
+              setPageHeightFromPage({ page });
+            }}
+          /> */}
         </Document>
 
         {mousePos && (

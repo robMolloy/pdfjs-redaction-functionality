@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -73,7 +73,7 @@ const CustomPdfPage = (p: {
   );
 };
 
-export const CustomPageComponent = () => {
+export const CustomPageComponentWithRedaction = () => {
   const [numPages, setNumPages] = useState<number>();
   const [scale, setScale] = useState<number>(1);
   const [mousePos, setMousePos] = useState<{

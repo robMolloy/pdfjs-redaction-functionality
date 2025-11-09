@@ -12,14 +12,16 @@ const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
-  const [unscaledPageHeight, setUnscaledPageHeight] = useState(0);
   const requestAnimationFrameRef = useRef<number | null>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (requestAnimationFrameRef.current) return;
 
+    const target = e.target as HTMLDivElement;
+    if (!target.className.includes("react-pdf__Page__textContent"))
+      return setMousePos(null);
+
     requestAnimationFrameRef.current = requestAnimationFrame(() => {
-      const target = e.target as HTMLDivElement;
       const rect = target.getBoundingClientRect();
 
       const screenX = e.clientX;
@@ -34,7 +36,7 @@ const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
       const targetY = screenY - targetTop;
 
       const x = targetX / p.scale;
-      const y = (targetHeight - targetY) / p.scale;
+      const y = (targetHeight - targetY) / p.scale; // required for bottom-left origin
 
       requestAnimationFrameRef.current = null;
       setMousePos({ x, y });
@@ -53,16 +55,14 @@ const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
       {mousePos
         ? `x: ${mousePos.x.toFixed(2)}, y: ${mousePos.y.toFixed(2)}`
         : "N/A"}
-      <Page
-        pageNumber={p.pageNumber}
-        scale={p.scale}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setMousePos(null)}
-        onLoadSuccess={(page) => {
-          const viewport = page.getViewport({ scale: 1 });
-          setUnscaledPageHeight(viewport.height);
-        }}
-      />
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <Page
+          pageNumber={p.pageNumber}
+          scale={p.scale}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setMousePos(null)}
+        />
+      </div>
     </div>
   );
 };
@@ -79,7 +79,7 @@ export const CustomPageComponent = () => {
       Scale: {scale}
       <br />
       <Document
-        file="http://localhost:5173/lots-of-pages-of-links.pdf"
+        file="http://localhost:5173/different-orientations-and-sizes.pdf"
         onLoadSuccess={(x) => setNumPages(x.numPages)}
       >
         {[...Array(numPages)].map((_, j) => (

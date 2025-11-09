@@ -25,14 +25,16 @@ const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
       const screenX = e.clientX;
       const screenY = e.clientY;
 
-      const targetWidth = rect.left;
-      const targetHeight = rect.top;
+      const targetLeft = rect.left;
+      const targetTop = rect.top;
+      const targetBottom = rect.bottom;
+      const targetHeight = targetBottom - targetTop;
 
-      const targetX = screenX - targetWidth;
-      const targetY = screenY - targetHeight;
+      const targetX = screenX - targetLeft;
+      const targetY = screenY - targetTop;
 
       const x = targetX / p.scale;
-      const y = unscaledPageHeight - targetY / p.scale;
+      const y = (targetHeight - targetY) / p.scale;
 
       requestAnimationFrameRef.current = null;
       setMousePos({ x, y });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -8,10 +8,16 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
+const CustomPdfPage = (p: {
+  onMouseMove: (p: { x: number; y: number } | null) => void;
+  pageNumber: number;
+  scale: number;
+}) => {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
+
+  useEffect(() => p.onMouseMove(mousePos), [mousePos]);
   const requestAnimationFrameRef = useRef<number | null>(null);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -70,6 +76,11 @@ const CustomPdfPage = (p: { pageNumber: number; scale: number }) => {
 export const CustomPageComponent = () => {
   const [numPages, setNumPages] = useState<number>();
   const [scale, setScale] = useState<number>(1);
+  const [mousePos, setMousePos] = useState<{
+    pageIndex: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   return (
     <div>
@@ -78,12 +89,21 @@ export const CustomPageComponent = () => {
       <button onClick={() => setScale(1)}>Reset</button>
       Scale: {scale}
       <br />
+      mousePos: {JSON.stringify({ mousePos })}
+      <br />
       <Document
         file="http://localhost:5173/different-orientations-and-sizes.pdf"
         onLoadSuccess={(x) => setNumPages(x.numPages)}
       >
         {[...Array(numPages)].map((_, j) => (
-          <CustomPdfPage key={j} pageNumber={j + 1} scale={scale} />
+          <CustomPdfPage
+            key={j}
+            pageNumber={j + 1}
+            scale={scale}
+            onMouseMove={(coords) =>
+              setMousePos(coords ? { pageIndex: j + 1, ...coords } : null)
+            }
+          />
         ))}
       </Document>
     </div>

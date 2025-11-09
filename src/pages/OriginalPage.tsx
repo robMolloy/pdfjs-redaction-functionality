@@ -107,9 +107,9 @@ export const OriginalPage = () => {
             }}
             renderAnnotationLayer={true}
             renderTextLayer={true}
-            onGetAnnotationsSuccess={(annotations) =>
-              console.log({ annotations })
-            }
+            // onGetAnnotationsSuccess={(annotations) =>
+            //   console.log({ annotations })
+            // }
             onLoadSuccess={(page) => {
               const viewport = page.getViewport({ scale: 1 });
 

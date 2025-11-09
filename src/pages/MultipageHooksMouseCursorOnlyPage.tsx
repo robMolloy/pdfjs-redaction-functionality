@@ -9,23 +9,6 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-const UninteractiveElementsStyleTag = () => (
-  <style>
-    {`
-          .react-pdf__Page__textContent {
-            pointer-events: none !important;
-          }
-          a {
-            pointer-events: none !important;
-          }
-          section {
-            pointer-events: none !important;
-          }
-        `}
-  </style>
-);
-const InteractiveElementsStyleTag = () => <></>;
-
 const usePdfPageDimensions = (p: { initScale: number }) => {
   const [scale, setScale] = useState<number>(p.initScale);
   const [unscaledPageHeight, setUnscaledPageHeight] = useState<number>(0);
@@ -76,34 +59,15 @@ const usePdfMousePosition = () => {
   return { mousePos, setMousePos, handleMouseMove };
 };
 
-const usePdfInteractiveMode = (p: { initInteractiveMode: boolean }) => {
-  const [interactiveMode, setInteractiveMode] = useState(p.initInteractiveMode);
-
-  const StyleTag = interactiveMode
-    ? InteractiveElementsStyleTag
-    : UninteractiveElementsStyleTag;
-
-  const toggleInteractiveMode = () => setInteractiveMode((x) => !x);
-
-  return { interactiveMode, toggleInteractiveMode, StyleTag };
-};
-
-export const HooksMouseCursorOnlyPage = () => {
+export const MultipageHooksMouseCursorOnlyPage = () => {
   const [numPages, setNumPages] = useState<number>();
   const { scale, setScale, unscaledPageHeight, setPageHeightFromPage } =
     usePdfPageDimensions({ initScale: 1 });
 
   const { mousePos, setMousePos, handleMouseMove } = usePdfMousePosition();
 
-  const { StyleTag, toggleInteractiveMode, interactiveMode } =
-    usePdfInteractiveMode({ initInteractiveMode: true });
-
   return (
     <div>
-      <StyleTag />
-      <button onClick={() => toggleInteractiveMode()}>
-        Current mode: {interactiveMode ? "Interactive" : "Uninteractive"}
-      </button>
       <br />
       <br />
       <button onClick={() => setScale((scale) => (scale += 0.25))}>++++</button>
@@ -125,6 +89,7 @@ export const HooksMouseCursorOnlyPage = () => {
         >
           {[...Array(numPages)].map((_, j) => (
             <Page
+              key={j}
               pageNumber={j + 1}
               scale={scale}
               onMouseMove={(e) => {

@@ -2,6 +2,20 @@ import { Link, Route, Routes } from "react-router-dom";
 import { MouseCursorOnlyPage } from "./pages/MouseCursorOnlyPage";
 import { OriginalPage } from "./pages/OriginalPage";
 import { HooksMouseCursorOnlyPage } from "./pages/HooksMouseCursorOnlyPage";
+import { MultipageHooksMouseCursorOnlyPage } from "./pages/MultipageHooksMouseCursorOnlyPage";
+import { CustomPageComponent } from "./pages/CustomPageComponent";
+
+const routeDataMap = {
+  OriginalPage,
+  MouseCursorOnlyPage,
+  HooksMouseCursorOnlyPage,
+  MultipageHooksMouseCursorOnlyPage,
+  CustomPageComponent,
+};
+const routeData = Object.entries(routeDataMap).map(([path, element]) => ({
+  path: `/${path}`,
+  element,
+}));
 
 function App() {
   return (
@@ -9,30 +23,18 @@ function App() {
       <div className="app">
         <nav>
           <ul>
-            <li>
-              <Link to="/">Original</Link>
-            </li>
-            <li>
-              <Link to="/mouseCursorOnlyPage">MouseCursorOnlyPage</Link>
-            </li>
-            <li>
-              <Link to="/hooksMouseCursorOnlyPage">
-                HooksMouseCursorOnlyPage
-              </Link>
-            </li>
+            {routeData.map((x) => (
+              <li key={x.path}>
+                <Link to={x.path}>{x.path}</Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
         <Routes>
-          <Route path="/" element={<OriginalPage />} />
-          <Route
-            path="/mouseCursorOnlyPage"
-            element={<MouseCursorOnlyPage />}
-          />
-          <Route
-            path="/hooksMouseCursorOnlyPage"
-            element={<HooksMouseCursorOnlyPage />}
-          />
+          {routeData.map((x) => (
+            <Route key={x.path} path={x.path} element={<x.element />} />
+          ))}
         </Routes>
       </div>
     </div>

@@ -47,15 +47,15 @@ const getPdfCoords = (p: {
   screenX: number;
   screenY: number;
   scale: number;
-  targetRect: DOMRect;
+  pdfPageRect: DOMRect;
 }) => {
-  const targetLeft = p.targetRect.left;
-  const targetTop = p.targetRect.top;
-  const targetBottom = p.targetRect.bottom;
+  const targetLeft = p.pdfPageRect.left;
+  const targetTop = p.pdfPageRect.top;
+  const targetBottom = p.pdfPageRect.bottom;
   const targetHeight = targetBottom - targetTop;
 
-  const targetX = screenX - targetLeft;
-  const targetY = screenY - targetTop;
+  const targetX = p.screenX - targetLeft;
+  const targetY = p.screenY - targetTop;
 
   const x = targetX / p.scale;
   const y = (targetHeight - targetY) / p.scale; // required for bottom-left origin
@@ -77,7 +77,7 @@ const CustomPdfPage = (p: {
   const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
   const [redactions, setRedactions] = useState<TCoordPair[]>([]);
 
-  const pageWrapperElmRef = useRef<HTMLDivElement | null>(null);
+  const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
 
   const requestAnimationFrameRef = useRef<number | null>(null);
 
@@ -94,19 +94,15 @@ const CustomPdfPage = (p: {
       const screenX = e.clientX;
       const screenY = e.clientY;
 
-      const targetLeft = rect.left;
-      const targetTop = rect.top;
-      const targetBottom = rect.bottom;
-      const targetHeight = targetBottom - targetTop;
-
-      const targetX = screenX - targetLeft;
-      const targetY = screenY - targetTop;
-
-      const x = targetX / p.scale;
-      const y = (targetHeight - targetY) / p.scale; // required for bottom-left origin
+      const coord = getPdfCoords({
+        screenX,
+        screenY,
+        scale: p.scale,
+        pdfPageRect: rect,
+      });
+      setMousePos(coord);
 
       requestAnimationFrameRef.current = null;
-      setMousePos({ x, y });
     });
   };
 
@@ -128,23 +124,34 @@ const CustomPdfPage = (p: {
           const rects = range.getClientRects();
           [...rects].forEach((r) => {
             if (r.width < 3) return;
-            console.log(`CustomPageComponentWithRedaction.tsx:${/*LL*/ 109}`, {
-              r,
+            if (!pdfPageWrapperElmRef.current) return;
+            const pdfPageRect =
+              pdfPageWrapperElmRef.current.getBoundingClientRect();
+
+            const coord1 = getPdfCoords({
+              screenX: r.left,
+              screenY: r.bottom,
+              scale: p.scale,
+              pdfPageRect,
             });
+            const coord2 = getPdfCoords({
+              screenX: r.right,
+              screenY: r.top,
+              scale: p.scale,
+              pdfPageRect,
+            });
+
+            const newRedaction = {
+              x1: coord1.x,
+              y1: coord1.y,
+              x2: coord2.x,
+              y2: coord2.y,
+            };
+            setRedactions((redactions) => [...redactions, newRedaction]);
           });
         }}
       >
         Redact selected text
-      </button>
-      <button
-        onClick={() => {
-          console.log(`CustomPageComponentWithRedaction.tsx:${/*LL*/ 140}`, {
-            pageWrapperElmRef,
-            x: pageWrapperElmRef.current?.getBoundingClientRect(),
-          });
-        }}
-      >
-        log page
       </button>
       <pre>{JSON.stringify({ redactions })}</pre>
       <br />
@@ -154,7 +161,7 @@ const CustomPdfPage = (p: {
         ? `x: ${mousePos.x.toFixed(2)}, y: ${mousePos.y.toFixed(2)}`
         : "N/A"}
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <div ref={pageWrapperElmRef} style={{ position: "relative" }}>
+        <div ref={pdfPageWrapperElmRef} style={{ position: "relative" }}>
           <Page
             pageNumber={p.pageNumber}
             onClick={() => {

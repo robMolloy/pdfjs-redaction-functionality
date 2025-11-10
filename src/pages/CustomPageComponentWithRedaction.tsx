@@ -32,11 +32,12 @@ type TMode = "textRedact" | "geometryRedact";
 
 const UninteractiveElementsStyleTag = () => (
   <style>
-    {`
-        .react-pdf__Page__annotations *, .react-pdf__Page__textContent * {
+    {/* {`
+        .react-pdf__Page__annotations a, 
+        .react-pdf__Page__textContent a {
           pointer-events: none !important;
         }
-      `}
+      `} */}
   </style>
 );
 
@@ -57,6 +58,11 @@ const getPdfCoords = (p: {
   const x = targetX / p.scale;
   const y = (targetHeight - targetY) / p.scale; // required for bottom-left origin
 
+  const pdfPageHeight = p.pdfPageRect.height / p.scale;
+  const pdfPageWidth = p.pdfPageRect.width / p.scale;
+
+  if (y > pdfPageHeight || x > pdfPageWidth) return null;
+
   return { x, y };
 };
 
@@ -72,7 +78,9 @@ const CustomPdfPage = (p: {
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
 
   const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
-  const [redactions, setRedactions] = useState<TCoordPair[]>([]);
+  const [redactions, setRedactions] = useState<(TCoordPair & { id: string })[]>(
+    []
+  );
 
   const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
 
@@ -138,7 +146,10 @@ const CustomPdfPage = (p: {
               pdfPageRect,
             });
 
+            if (!coord1 || !coord2) return;
+
             const newRedaction = {
+              id: crypto.randomUUID(),
               x1: coord1.x,
               y1: coord1.y,
               x2: coord2.x,
@@ -164,7 +175,8 @@ const CustomPdfPage = (p: {
             onClick={() => {
               if (p.mode === "textRedact") return;
               if (firstCorner && mousePos) {
-                const newRect: TCoordPair = {
+                const newRect = {
+                  id: crypto.randomUUID(),
                   x1: firstCorner.x,
                   y1: firstCorner.y,
                   x2: mousePos.x,
@@ -219,9 +231,36 @@ const CustomPdfPage = (p: {
                   height: `${height * p.scale}px`,
                   background: "rgba(255, 0, 0, 0.3)",
                   border: "2px solid red",
-                  pointerEvents: "none",
                 }}
-              />
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "-10px",
+                    right: "-10px",
+                    cursor: "pointer",
+                    background: "white",
+                    border: "1px solid black",
+                    borderRadius: "50%",
+                    width: "20px",
+                    height: "20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: "bold",
+                    color: "black",
+                    zIndex: 10,
+                  }}
+                  onClick={() => {
+                    const redactionsCopy = redactions.filter(
+                      (x) => x.id !== box.id
+                    );
+                    setRedactions(redactionsCopy);
+                  }}
+                >
+                  ×
+                </div>
+              </div>
             );
           })}
         </div>

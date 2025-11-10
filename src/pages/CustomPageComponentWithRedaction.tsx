@@ -33,10 +33,7 @@ type TMode = "textRedact" | "geometryRedact";
 const UninteractiveElementsStyleTag = () => (
   <style>
     {`
-        .react-pdf__Page__textContent a {
-          pointer-events: none !important;
-        }
-        .react-pdf__Page__textContent section {
+        .react-pdf__Page__annotations *, .react-pdf__Page__textContent * {
           pointer-events: none !important;
         }
       `}

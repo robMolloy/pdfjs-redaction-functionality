@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -10,14 +10,27 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 type TCoord = { x: number; y: number };
 type TCoordPair = { x1: number; y1: number; x2: number; y2: number };
-type TRedaction = TCoordPair & { id: string };
+type TRedaction = TCoordPair & { id: string; pageNumber: number };
 
-const convertCoordPairToXywh = (p: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+type TTriggerData = [] | undefined;
+const useTrigger = () => {
+  const [data, setData] = useState<[]>();
+
+  const fire = () => setData(() => []);
+
+  return { data, fire };
+};
+
+const useTriggerListener = (p: {
+  triggerData: TTriggerData;
+  fn: () => void;
 }) => {
+  useEffect(() => {
+    if (p.triggerData) p.fn();
+  }, [p.triggerData]);
+};
+
+const convertCoordPairToXywh = (p: TCoordPair) => {
   const xLeft = Math.min(p.x1, p.x2);
   const xRight = Math.max(p.x1, p.x2);
   const yBottom = Math.min(p.y1, p.y2);
@@ -31,15 +44,22 @@ const convertCoordPairToXywh = (p: {
 
 type TMode = "textRedact" | "geometryRedact";
 
-const UninteractiveElementsStyleTag = () => (
-  <style>
-    {`
-        .react-pdf__Page__annotations a, 
-        .react-pdf__Page__textContent span {
-          pointer-events: none !important;
-        }
-      `}
-  </style>
+const modeStyleMap: { [k in TMode]: string } = {
+  geometryRedact: `
+    .react-pdf__Page__annotations a, 
+    .react-pdf__Page__textContent span {
+      pointer-events: none !important;
+    }
+    .react-pdf__Page__annotations, 
+    .react-pdf__Page__textContent {
+      cursor: crosshair;
+    }
+    `,
+  textRedact: ``,
+};
+
+const ModeStyleTag = (p: { mode: TMode }) => (
+  <style>{modeStyleMap[p.mode]}</style>
 );
 
 const getPdfCoords = (p: {
@@ -67,13 +87,55 @@ const getPdfCoords = (p: {
   return { x, y };
 };
 
+const getPdfCoordPairsOfHighlightedText = (p: {
+  pdfPageRect: DOMRect;
+  scale: number;
+}) => {
+  const selection = window.getSelection();
+  if (!selection) return;
+  const range = selection.getRangeAt(0);
+  const rects = range.getClientRects();
+  const coordPairs = [...rects].map((rect) => {
+    if (rect.width < 3) return;
+
+    const coord1 = getPdfCoords({
+      screenX: rect.left,
+      screenY: rect.bottom,
+      scale: p.scale,
+      pdfPageRect: p.pdfPageRect,
+    });
+    const coord2 = getPdfCoords({
+      screenX: rect.right,
+      screenY: rect.top,
+      scale: p.scale,
+      pdfPageRect: p.pdfPageRect,
+    });
+
+    if (!coord1 || !coord2) return;
+
+    const newRedaction: TCoordPair = {
+      x1: coord1.x,
+      y1: coord1.y,
+      x2: coord2.x,
+      y2: coord2.y,
+    };
+    return newRedaction;
+  });
+
+  return coordPairs.filter((x) => !!x);
+};
 const CustomPdfPage = (p: {
   onMouseMove: (p: { x: number; y: number } | null) => void;
   pageNumber: number;
   scale: number;
   mode: TMode;
   onRedactionsChange: (p: TRedaction[]) => void;
+  redactHighlightedTextTriggerData: TTriggerData;
 }) => {
+  useTriggerListener({
+    triggerData: p.redactHighlightedTextTriggerData,
+    fn: () => redactHighlightedText(),
+  });
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
@@ -84,6 +146,24 @@ const CustomPdfPage = (p: {
   useEffect(() => p.onRedactionsChange(redactions), [redactions]);
 
   const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
+
+  const redactHighlightedText = () => {
+    const pdfPageRect = pdfPageWrapperElmRef.current?.getBoundingClientRect();
+    if (!pdfPageRect) return;
+    const coordPairs = getPdfCoordPairsOfHighlightedText({
+      pdfPageRect,
+      scale: p.scale,
+    });
+    if (!coordPairs) return;
+    setRedactions((redactions) => [
+      ...redactions,
+      ...coordPairs.map((x) => ({
+        ...x,
+        id: crypto.randomUUID(),
+        pageNumber: p.pageNumber,
+      })),
+    ]);
+  };
 
   const requestAnimationFrameRef = useRef<number | null>(null);
 
@@ -121,47 +201,9 @@ const CustomPdfPage = (p: {
 
   return (
     <div>
-      <button
-        onClick={() => {
-          const selection = window.getSelection();
-          if (!selection) return;
-          const range = selection.getRangeAt(0);
-          const rects = range.getClientRects();
-          [...rects].forEach((r) => {
-            if (r.width < 3) return;
-            if (!pdfPageWrapperElmRef.current) return;
-            const pdfPageRect =
-              pdfPageWrapperElmRef.current.getBoundingClientRect();
-
-            const coord1 = getPdfCoords({
-              screenX: r.left,
-              screenY: r.bottom,
-              scale: p.scale,
-              pdfPageRect,
-            });
-            const coord2 = getPdfCoords({
-              screenX: r.right,
-              screenY: r.top,
-              scale: p.scale,
-              pdfPageRect,
-            });
-
-            if (!coord1 || !coord2) return;
-
-            const newRedaction = {
-              id: crypto.randomUUID(),
-              x1: coord1.x,
-              y1: coord1.y,
-              x2: coord2.x,
-              y2: coord2.y,
-            };
-            setRedactions((redactions) => [...redactions, newRedaction]);
-          });
-        }}
-      >
-        Redact selected text
-      </button>
-      <div style={{ display: "flex", justifyContent: "center" }}>
+      <br />
+      {/* <div style={{ display: "flex", justifyContent: "center" }}> */}
+      <div style={{}}>
         <div ref={pdfPageWrapperElmRef} style={{ position: "relative" }}>
           <Page
             pageNumber={p.pageNumber}
@@ -174,6 +216,7 @@ const CustomPdfPage = (p: {
                   y1: firstCorner.y,
                   x2: mousePos.x,
                   y2: mousePos.y,
+                  pageNumber: p.pageNumber,
                 };
                 setRedactions((redactions) => [...redactions, newRect]);
               }
@@ -265,30 +308,24 @@ const CustomPdfPage = (p: {
 export const CustomPageComponentWithRedaction = () => {
   const [numPages, setNumPages] = useState<number>();
   const [scale, setScale] = useState<number>(1);
-  // const [mousePos, setMousePos] = useState<{
-  //   pageIndex: number;
-  //   x: number;
-  //   y: number;
-  // } | null>(null);
 
-  const [mode, setMode] = useState<TMode>("textRedact");
+  const redactHighlightedTextTrigger = useTrigger();
+
+  const [mode, setMode] = useState<TMode>("geometryRedact");
   const [redactionsOnPageNumber, setRedactionsOnPageNumber] = useState<{
     [k: number]: TRedaction[];
   }>({});
 
-  useEffect(() => {
-    const flattenedRedactions = (() => {
-      const temp: (TRedaction & { pageNumber: number })[] = [];
-      Object.entries(redactionsOnPageNumber).forEach(
-        ([pageNumber, redactions]) => {
-          redactions.forEach((redaction) => {
-            temp.push({ ...redaction, pageNumber: Number(pageNumber) });
-          });
-        }
-      );
-      return temp;
-    })();
-    console.log({ flattenedRedactions });
+  const flattenedRedactions = useMemo(() => {
+    const temp: (TRedaction & { pageNumber: number })[] = [];
+    Object.entries(redactionsOnPageNumber).forEach(
+      ([pageNumber, redactions]) => {
+        redactions.forEach((redaction) => {
+          temp.push({ ...redaction, pageNumber: Number(pageNumber) });
+        });
+      }
+    );
+    return temp;
   }, [redactionsOnPageNumber]);
 
   return (
@@ -307,29 +344,66 @@ export const CustomPageComponentWithRedaction = () => {
       <button onClick={() => setScale((scale) => (scale += 0.25))}>++++</button>
       <button onClick={() => setScale((scale) => (scale -= 0.25))}>----</button>
       <button onClick={() => setScale(1)}>Reset</button>
+      <button onClick={() => redactHighlightedTextTrigger.fire()}>
+        do something
+      </button>
       Scale: {scale}
       <br />
-      {mode === "geometryRedact" && <UninteractiveElementsStyleTag />}
-      <Document
-        file="http://localhost:5173/may-plus-images.pdf"
-        onLoadSuccess={(x) => setNumPages(x.numPages)}
+      <style>{`
+      .react-pdf__Page {
+        background-color: gray !important;
+        display: flex;
+      }
+`}</style>
+      <ModeStyleTag mode={mode} />
+      <div
+        style={{
+          position: "relative",
+          height: "500px",
+          width: "100%",
+          overflowX: "scroll",
+          overflowY: "scroll",
+        }}
       >
-        {[...Array(numPages)].map((_, j) => (
-          <CustomPdfPage
-            key={j}
-            pageNumber={j + 1}
-            scale={scale}
-            onMouseMove={() => {}}
-            // onMouseMove={(coords) => {
-            //   setMousePos(coords ? { pageIndex: j + 1, ...coords } : null);
-            // }}
-            mode={mode}
-            onRedactionsChange={(x) => {
-              setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
-            }}
-          />
-        ))}
-      </Document>
+        <Document
+          file="http://localhost:5173/final.pdf"
+          onLoadSuccess={(x) => setNumPages(x.numPages)}
+        >
+          {[...Array(numPages)].map((_, j) => (
+            <CustomPdfPage
+              key={j}
+              pageNumber={j + 1}
+              scale={scale}
+              onMouseMove={() => {}}
+              redactHighlightedTextTriggerData={
+                redactHighlightedTextTrigger.data
+              }
+              mode={mode}
+              onRedactionsChange={(x) => {
+                setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
+              }}
+            />
+          ))}
+        </Document>
+      </div>
+      <br />
+      {flattenedRedactions.length > 0 && (
+        <div
+          style={{
+            background: "white",
+            color: "black",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "10px",
+          }}
+        >
+          <span>There are {flattenedRedactions.length} redactions</span>
+          <button onClick={() => setRedactionsOnPageNumber({})}>
+            Clear all redactions
+          </button>
+        </div>
+      )}
     </div>
   );
 };

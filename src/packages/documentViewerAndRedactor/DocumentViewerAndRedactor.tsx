@@ -5,7 +5,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { useTrigger } from "./utils/useTriggger";
 import { ModeStyleTag, type TMode } from "./utils/modeUtils";
 import type { TRedaction } from "./utils/coordUtils";
-import { PdfPage } from "./PdfPage";
+import { DocumentViewerAndRedactorPage } from "./DocumentViewerAndRedactorPage";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -85,7 +85,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
           onLoadSuccess={(x) => setNumPages(x.numPages)}
         >
           {[...Array(numPages)].map((_, j) => (
-            <PdfPage
+            <DocumentViewerAndRedactorPage
               key={j}
               pageNumber={j + 1}
               scale={scale}

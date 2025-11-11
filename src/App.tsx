@@ -5,7 +5,7 @@ import { HooksMouseCursorOnlyPage } from "./pages/HooksMouseCursorOnlyPage";
 import { MultipageHooksMouseCursorOnlyPage } from "./pages/MultipageHooksMouseCursorOnlyPage";
 import { CustomPageComponent } from "./pages/CustomPageComponent";
 import { CustomPageComponentWithRedaction } from "./pages/CustomPageComponentWithRedaction";
-import { DocumentViewerAndRedactorPage } from "./pages/DocumentViewerAndRedactorPage";
+import { OfficialPage } from "./pages/OfficialPage";
 
 const routeDataMap = {
   OriginalPage,
@@ -14,7 +14,7 @@ const routeDataMap = {
   MultipageHooksMouseCursorOnlyPage,
   CustomPageComponent,
   CustomPageComponentWithRedaction,
-  DocumentViewerAndRedactorPage,
+  OfficialPage,
 };
 const routeData = Object.entries(routeDataMap).map(([path, element]) => ({
   path: `/${path}`,

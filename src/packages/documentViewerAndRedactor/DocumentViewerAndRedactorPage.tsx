@@ -1,4 +1,4 @@
-import React, { use, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Page } from "react-pdf";
 import {
   convertCoordPairToXywh,
@@ -6,12 +6,12 @@ import {
   type TCoord,
   type TRedaction,
 } from "./utils/coordUtils";
-import { useTriggerListener, type TTriggerData } from "./utils/useTriggger";
-import type { TMode } from "./utils/modeUtils";
-import { getPdfCoordPairsOfHighlightedText } from "./utils/highlightedTextUtils";
 import { createId } from "./utils/generalUtils";
+import { getPdfCoordPairsOfHighlightedText } from "./utils/highlightedTextUtils";
+import type { TMode } from "./utils/modeUtils";
+import { useTriggerListener, type TTriggerData } from "./utils/useTriggger";
 
-export const PdfPage = (p: {
+export const DocumentViewerAndRedactorPage = (p: {
   onMouseMove: (p: { x: number; y: number } | null) => void;
   pageNumber: number;
   scale: number;

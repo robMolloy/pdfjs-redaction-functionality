@@ -1,6 +1,6 @@
 import { DocumentViewerAndRedactor } from "../packages/documentViewerAndRedactor/DocumentViewerAndRedactor";
 
-export const DocumentViewerAndRedactorPage = () => {
+export const OfficialPage = () => {
   return (
     <div>
       <DocumentViewerAndRedactor

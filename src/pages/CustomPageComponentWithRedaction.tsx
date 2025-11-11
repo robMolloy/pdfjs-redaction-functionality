@@ -10,6 +10,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 type TCoord = { x: number; y: number };
 type TCoordPair = { x1: number; y1: number; x2: number; y2: number };
+type TRedaction = TCoordPair & { id: string };
 
 const convertCoordPairToXywh = (p: {
   x1: number;
@@ -32,12 +33,12 @@ type TMode = "textRedact" | "geometryRedact";
 
 const UninteractiveElementsStyleTag = () => (
   <style>
-    {/* {`
+    {`
         .react-pdf__Page__annotations a, 
-        .react-pdf__Page__textContent a {
+        .react-pdf__Page__textContent span {
           pointer-events: none !important;
         }
-      `} */}
+      `}
   </style>
 );
 
@@ -71,6 +72,7 @@ const CustomPdfPage = (p: {
   pageNumber: number;
   scale: number;
   mode: TMode;
+  onRedactionsChange: (p: TRedaction[]) => void;
 }) => {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
@@ -78,9 +80,8 @@ const CustomPdfPage = (p: {
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
 
   const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
-  const [redactions, setRedactions] = useState<(TCoordPair & { id: string })[]>(
-    []
-  );
+  const [redactions, setRedactions] = useState<TRedaction[]>([]);
+  useEffect(() => p.onRedactionsChange(redactions), [redactions]);
 
   const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
 
@@ -120,7 +121,6 @@ const CustomPdfPage = (p: {
 
   return (
     <div>
-      {p.mode === "geometryRedact" && <UninteractiveElementsStyleTag />}
       <button
         onClick={() => {
           const selection = window.getSelection();
@@ -161,13 +161,6 @@ const CustomPdfPage = (p: {
       >
         Redact selected text
       </button>
-      <pre>{JSON.stringify({ redactions })}</pre>
-      <br />
-      <pre>{JSON.stringify({ firstCorner })}</pre>
-      <br />
-      {mousePos
-        ? `x: ${mousePos.x.toFixed(2)}, y: ${mousePos.y.toFixed(2)}`
-        : "N/A"}
       <div style={{ display: "flex", justifyContent: "center" }}>
         <div ref={pdfPageWrapperElmRef} style={{ position: "relative" }}>
           <Page
@@ -272,20 +265,38 @@ const CustomPdfPage = (p: {
 export const CustomPageComponentWithRedaction = () => {
   const [numPages, setNumPages] = useState<number>();
   const [scale, setScale] = useState<number>(1);
-  const [mousePos, setMousePos] = useState<{
-    pageIndex: number;
-    x: number;
-    y: number;
-  } | null>(null);
+  // const [mousePos, setMousePos] = useState<{
+  //   pageIndex: number;
+  //   x: number;
+  //   y: number;
+  // } | null>(null);
 
   const [mode, setMode] = useState<TMode>("textRedact");
+  const [redactionsOnPageNumber, setRedactionsOnPageNumber] = useState<{
+    [k: number]: TRedaction[];
+  }>({});
+
+  useEffect(() => {
+    const flattenedRedactions = (() => {
+      const temp: (TRedaction & { pageNumber: number })[] = [];
+      Object.entries(redactionsOnPageNumber).forEach(
+        ([pageNumber, redactions]) => {
+          redactions.forEach((redaction) => {
+            temp.push({ ...redaction, pageNumber: Number(pageNumber) });
+          });
+        }
+      );
+      return temp;
+    })();
+    console.log({ flattenedRedactions });
+  }, [redactionsOnPageNumber]);
 
   return (
     <div>
       <button
         onClick={() =>
-          setMode((x) =>
-            x === "geometryRedact" ? "textRedact" : "geometryRedact"
+          setMode((prev) =>
+            prev === "geometryRedact" ? "textRedact" : "geometryRedact"
           )
         }
       >
@@ -298,8 +309,7 @@ export const CustomPageComponentWithRedaction = () => {
       <button onClick={() => setScale(1)}>Reset</button>
       Scale: {scale}
       <br />
-      mousePos: {JSON.stringify({ mousePos })}
-      <br />
+      {mode === "geometryRedact" && <UninteractiveElementsStyleTag />}
       <Document
         file="http://localhost:5173/may-plus-images.pdf"
         onLoadSuccess={(x) => setNumPages(x.numPages)}
@@ -309,10 +319,14 @@ export const CustomPageComponentWithRedaction = () => {
             key={j}
             pageNumber={j + 1}
             scale={scale}
-            onMouseMove={(coords) => {
-              setMousePos(coords ? { pageIndex: j + 1, ...coords } : null);
-            }}
+            onMouseMove={() => {}}
+            // onMouseMove={(coords) => {
+            //   setMousePos(coords ? { pageIndex: j + 1, ...coords } : null);
+            // }}
             mode={mode}
+            onRedactionsChange={(x) => {
+              setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
+            }}
           />
         ))}
       </Document>

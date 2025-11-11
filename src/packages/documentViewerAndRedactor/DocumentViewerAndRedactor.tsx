@@ -94,10 +94,10 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
                 redactHighlightedTextTrigger.data
               }
               mode={mode}
-              onRedactionsChange={(x) => {
+              setRedactions={(x) => {
                 setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
               }}
-              redactionsFromParent={redactionsOnPageNumber[j]}
+              redactions={redactionsOnPageNumber[j]}
             />
           ))}
         </Document>

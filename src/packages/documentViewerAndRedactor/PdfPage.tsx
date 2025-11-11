@@ -16,27 +16,17 @@ export const PdfPage = (p: {
   pageNumber: number;
   scale: number;
   mode: TMode;
-  onRedactionsChange: (p: TRedaction[]) => void;
   redactHighlightedTextTriggerData: TTriggerData;
-  redactionsFromParent: TRedaction[] | undefined;
+  setRedactions: (p: TRedaction[]) => void;
+  redactions: TRedaction[] | undefined;
 }) => {
-  const { pageNumber, scale } = p;
+  const { pageNumber, scale, redactions, setRedactions } = p;
 
   const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
-  const [redactions, setRedactions] = useState<TRedaction[]>([]);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
-  useEffect(() => p.onRedactionsChange(redactions), [redactions]);
-
-  useEffect(() => {
-    if (
-      p.redactionsFromParent === undefined ||
-      (p.redactionsFromParent.length === 0 && redactions.length !== 0)
-    )
-      setRedactions([]);
-  }, [p.redactionsFromParent]);
 
   useTriggerListener({
     triggerData: p.redactHighlightedTextTriggerData,
@@ -49,8 +39,8 @@ export const PdfPage = (p: {
         scale,
       });
 
-      setRedactions((redactions) => [
-        ...redactions,
+      setRedactions([
+        ...(redactions ? redactions : []),
         ...coordPairs.map((coordPair) => {
           return { ...coordPair, id: createId(), pageNumber };
         }),
@@ -109,7 +99,7 @@ export const PdfPage = (p: {
                   y2: mousePos.y,
                   pageNumber: p.pageNumber,
                 };
-                setRedactions((redactions) => [...redactions, newRect]);
+                setRedactions([...(redactions ? redactions : []), newRect]);
               }
               setFirstCorner(firstCorner ? null : mousePos);
             }}
@@ -143,7 +133,7 @@ export const PdfPage = (p: {
               );
             })()}
 
-          {redactions.map((box, i) => {
+          {redactions?.map((box, i) => {
             const { xLeft, yBottom, width, height } =
               convertCoordPairToXywh(box);
 
@@ -179,9 +169,7 @@ export const PdfPage = (p: {
                     zIndex: 10,
                   }}
                   onClick={() => {
-                    setRedactions((prev) =>
-                      prev.filter((x) => x.id !== box.id)
-                    );
+                    setRedactions(redactions?.filter((x) => x.id !== box.id));
                   }}
                 >
                   ×

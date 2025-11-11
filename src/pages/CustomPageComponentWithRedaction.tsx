@@ -16,7 +16,10 @@ type TTriggerData = [] | undefined;
 const useTrigger = () => {
   const [data, setData] = useState<[]>();
 
-  const fire = () => setData(() => []);
+  const fire = () => {
+    console.log(`CustomPageComponentWithRedaction.tsx:${/*LL*/ 20}`, {});
+    setData(() => []);
+  };
 
   return { data, fire };
 };
@@ -26,7 +29,8 @@ const useTriggerListener = (p: {
   fn: () => void;
 }) => {
   useEffect(() => {
-    if (p.triggerData) p.fn();
+    if (!p.triggerData) return;
+    p.fn();
   }, [p.triggerData]);
 };
 
@@ -82,18 +86,30 @@ const getPdfCoords = (p: {
   const pdfPageHeight = p.pdfPageRect.height / p.scale;
   const pdfPageWidth = p.pdfPageRect.width / p.scale;
 
-  if (y > pdfPageHeight || x > pdfPageWidth) return null;
+  if (y > pdfPageHeight || x > pdfPageWidth || y < 0 || x < 0) return null;
 
   return { x, y };
 };
 
+const safeGetRangeAt = (p: { selection: Selection }) => {
+  try {
+    const range = p.selection.getRangeAt(0);
+    return { success: true, data: range } as const;
+  } catch (error) {
+    return { success: false } as const;
+  }
+};
 const getPdfCoordPairsOfHighlightedText = (p: {
   pdfPageRect: DOMRect;
   scale: number;
 }) => {
   const selection = window.getSelection();
   if (!selection) return;
-  const range = selection.getRangeAt(0);
+
+  const rangeResponse = safeGetRangeAt({ selection });
+  if (!rangeResponse.success) return;
+
+  const range = rangeResponse.data;
   const rects = range.getClientRects();
   const coordPairs = [...rects].map((rect) => {
     if (rect.width < 3) return;
@@ -155,6 +171,7 @@ const CustomPdfPage = (p: {
       scale: p.scale,
     });
     if (!coordPairs) return;
+
     setRedactions((redactions) => [
       ...redactions,
       ...coordPairs.map((x) => ({
@@ -344,7 +361,15 @@ export const CustomPageComponentWithRedaction = () => {
       <button onClick={() => setScale((scale) => (scale += 0.25))}>++++</button>
       <button onClick={() => setScale((scale) => (scale -= 0.25))}>----</button>
       <button onClick={() => setScale(1)}>Reset</button>
-      <button onClick={() => redactHighlightedTextTrigger.fire()}>
+      <button
+        onClick={() => {
+          redactHighlightedTextTrigger.fire();
+          setTimeout(() => {
+            const selection = window.getSelection();
+            if (selection) selection?.removeAllRanges();
+          }, 250);
+        }}
+      >
         do something
       </button>
       Scale: {scale}
@@ -366,6 +391,7 @@ export const CustomPageComponentWithRedaction = () => {
         }}
       >
         <Document
+          // file="http://localhost:5173/may-plus-images.pdf"
           file="http://localhost:5173/final.pdf"
           onLoadSuccess={(x) => setNumPages(x.numPages)}
         >

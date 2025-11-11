@@ -9,6 +9,7 @@ import {
 import { useTriggerListener, type TTriggerData } from "./utils/useTriggger";
 import type { TMode } from "./utils/modeUtils";
 import { getPdfCoordPairsOfHighlightedText } from "./utils/highlightedTextUtils";
+import { createId } from "./utils/generalUtils";
 
 export const PdfPage = (p: {
   onMouseMove: (p: { x: number; y: number } | null) => void;
@@ -18,50 +19,44 @@ export const PdfPage = (p: {
   onRedactionsChange: (p: TRedaction[]) => void;
   redactHighlightedTextTriggerData: TTriggerData;
 }) => {
-  useTriggerListener({
-    triggerData: p.redactHighlightedTextTriggerData,
-    fn: () => redactHighlightedText(),
-  });
+  const { pageNumber, scale } = p;
+
+  const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
+  const [redactions, setRedactions] = useState<TRedaction[]>([]);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
-
-  const [firstCorner, setFirstCorner] = useState<TCoord | null>(null);
-  const [redactions, setRedactions] = useState<TRedaction[]>([]);
   useEffect(() => p.onRedactionsChange(redactions), [redactions]);
 
+  useTriggerListener({
+    triggerData: p.redactHighlightedTextTriggerData,
+    fn: () => {
+      const pdfPageRect = pdfPageWrapperElmRef.current?.getBoundingClientRect();
+      if (!pdfPageRect) return;
+
+      const coordPairs = getPdfCoordPairsOfHighlightedText({
+        pdfPageRect,
+        scale,
+      });
+
+      setRedactions((redactions) => [
+        ...redactions,
+        ...coordPairs.map((coordPair) => {
+          return { ...coordPair, id: createId(), pageNumber };
+        }),
+      ]);
+    },
+  });
+
   const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
-
-  const redactHighlightedText = () => {
-    const pdfPageRect = pdfPageWrapperElmRef.current?.getBoundingClientRect();
-    if (!pdfPageRect) return;
-    const coordPairs = getPdfCoordPairsOfHighlightedText({
-      pdfPageRect,
-      scale: p.scale,
-    });
-    if (!coordPairs) return;
-    if (coordPairs.length === 0) return;
-
-    setRedactions((redactions) => [
-      ...redactions,
-      ...coordPairs.map((coordPair) => ({
-        ...coordPair,
-        id: crypto.randomUUID(),
-        pageNumber: p.pageNumber,
-      })),
-    ]);
-  };
-
   const requestAnimationFrameRef = useRef<number | null>(null);
-
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (requestAnimationFrameRef.current) return;
 
     const target = e.target as HTMLDivElement;
-    if (!target.className.includes("react-pdf__Page__textContent")) {
-      return;
-    }
+    if (!target.className.includes("react-pdf__Page__textContent")) return;
+
     requestAnimationFrameRef.current = requestAnimationFrame(() => {
       const rect = target.getBoundingClientRect();
 
@@ -79,7 +74,6 @@ export const PdfPage = (p: {
       requestAnimationFrameRef.current = null;
     });
   };
-
   useEffect(() => {
     return () => {
       if (requestAnimationFrameRef.current)

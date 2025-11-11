@@ -37,6 +37,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
 
   return (
     <div>
+      <pre>{JSON.stringify(redactionsOnPageNumber, undefined, 2)}</pre>
       <button
         onClick={() =>
           setMode((prev) =>

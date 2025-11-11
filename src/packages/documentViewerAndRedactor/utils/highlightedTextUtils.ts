@@ -13,7 +13,7 @@ export const getPdfCoordPairsOfHighlightedText = (p: {
   const range = rangeResponse.data;
   const rects = range.getClientRects();
   const coordPairs = [...rects].map((rect) => {
-    if (rect.width < 3) return;
+    if (rect.width < 3 || rect.height < 3) return;
 
     const coord1 = getPdfCoords({
       screenX: rect.left,

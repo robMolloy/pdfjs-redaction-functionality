@@ -17,7 +17,6 @@ const useTrigger = () => {
   const [data, setData] = useState<[]>();
 
   const fire = () => {
-    console.log(`CustomPageComponentWithRedaction.tsx:${/*LL*/ 20}`, {});
     setData(() => []);
   };
 
@@ -171,11 +170,12 @@ const CustomPdfPage = (p: {
       scale: p.scale,
     });
     if (!coordPairs) return;
+    if (coordPairs.length === 0) return;
 
     setRedactions((redactions) => [
       ...redactions,
-      ...coordPairs.map((x) => ({
-        ...x,
+      ...coordPairs.map((coordPair) => ({
+        ...coordPair,
         id: crypto.randomUUID(),
         pageNumber: p.pageNumber,
       })),
@@ -305,10 +305,9 @@ const CustomPdfPage = (p: {
                     zIndex: 10,
                   }}
                   onClick={() => {
-                    const redactionsCopy = redactions.filter(
-                      (x) => x.id !== box.id
+                    setRedactions((prev) =>
+                      prev.filter((x) => x.id !== box.id)
                     );
-                    setRedactions(redactionsCopy);
                   }}
                 >
                   ×
@@ -391,8 +390,8 @@ export const CustomPageComponentWithRedaction = () => {
         }}
       >
         <Document
-          // file="http://localhost:5173/may-plus-images.pdf"
-          file="http://localhost:5173/final.pdf"
+          file="http://localhost:5173/may-plus-images.pdf"
+          // file="http://localhost:5173/final.pdf"
           onLoadSuccess={(x) => setNumPages(x.numPages)}
         >
           {[...Array(numPages)].map((_, j) => (

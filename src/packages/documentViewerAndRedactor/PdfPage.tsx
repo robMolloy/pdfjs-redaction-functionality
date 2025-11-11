@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import { Page } from "react-pdf";
 import {
   convertCoordPairToXywh,
@@ -18,6 +18,7 @@ export const PdfPage = (p: {
   mode: TMode;
   onRedactionsChange: (p: TRedaction[]) => void;
   redactHighlightedTextTriggerData: TTriggerData;
+  redactionsFromParent: TRedaction[] | undefined;
 }) => {
   const { pageNumber, scale } = p;
 
@@ -28,6 +29,14 @@ export const PdfPage = (p: {
   );
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
   useEffect(() => p.onRedactionsChange(redactions), [redactions]);
+
+  useEffect(() => {
+    if (
+      p.redactionsFromParent === undefined ||
+      (p.redactionsFromParent.length === 0 && redactions.length !== 0)
+    )
+      setRedactions([]);
+  }, [p.redactionsFromParent]);
 
   useTriggerListener({
     triggerData: p.redactHighlightedTextTriggerData,

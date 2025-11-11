@@ -37,7 +37,6 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
 
   return (
     <div>
-      <pre>{JSON.stringify(redactionsOnPageNumber, undefined, 2)}</pre>
       <button
         onClick={() =>
           setMode((prev) =>
@@ -98,6 +97,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
               onRedactionsChange={(x) => {
                 setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
               }}
+              redactionsFromParent={redactionsOnPageNumber[j]}
             />
           ))}
         </Document>

@@ -1,7 +1,7 @@
-export type TMode = "textRedact" | "geometryRedact";
+export type TMode = "textRedact" | "areaRedact";
 
 const modeStyleMap: { [k in TMode]: string } = {
-  geometryRedact: `
+  areaRedact: `
     .react-pdf__Page__annotations a, 
     .react-pdf__Page__textContent span {
       pointer-events: none !important;

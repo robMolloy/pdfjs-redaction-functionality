@@ -44,7 +44,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
 
   const redactHighlightedTextTrigger = useTrigger();
 
-  const [mode, setMode] = useState<TMode>("geometryRedact");
+  const [mode, setMode] = useState<TMode>("areaRedact");
   const [redactionsOnPageNumber, setRedactionsOnPageNumber] = useState<{
     [k: number]: TRedaction[];
   }>({});
@@ -71,11 +71,11 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
           <span>
             <button
               style={
-                mode === "geometryRedact"
+                mode === "areaRedact"
                   ? { background: "blue", color: "white" }
                   : {}
               }
-              onClick={() => setMode("geometryRedact")}
+              onClick={() => setMode("areaRedact")}
             >
               A
             </button>

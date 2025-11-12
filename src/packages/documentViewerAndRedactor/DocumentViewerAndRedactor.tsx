@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { Document, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { useTrigger } from "./utils/useTriggger";
-import { ModeStyleTag, type TMode } from "./utils/modeUtils";
-import type { TRedaction } from "./utils/coordUtils";
 import { DocumentViewerAndRedactorPage } from "./DocumentViewerAndRedactorPage";
+import type { TRedaction } from "./utils/coordUtils";
+import { ModeStyleTag, type TMode } from "./utils/modeUtils";
+import { useTrigger } from "./utils/useTriggger";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -54,21 +54,14 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
       <button
         onClick={() => {
           redactHighlightedTextTrigger.fire();
-          setTimeout(() => {
-            const selection = window.getSelection();
-            if (selection) selection?.removeAllRanges();
-          }, 250);
+
+          setTimeout(() => window.getSelection()?.removeAllRanges(), 250);
         }}
       >
         do something
       </button>
       Scale: {scale}
       <br />
-      <style>{`
-      .react-pdf__Page {
-        background-color: gray !important;
-      }
-`}</style>
       <ModeStyleTag mode={mode} />
       <div style={{ position: "relative" }}>
         <div
@@ -78,6 +71,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
             width: "100%",
             overflowX: "scroll",
             overflowY: "scroll",
+            backgroundColor: "gray",
           }}
         >
           <Document
@@ -100,7 +94,6 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
                 redactions={redactionsOnPageNumber[j]}
               />
             ))}
-            <br />
             <br />
             <br />
             <br />
@@ -127,7 +120,12 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
                 padding: "10px",
               }}
             >
-              <span>There are {flattenedRedactions.length} redactions</span>
+              <span>
+                {flattenedRedactions.length === 1 && <>There is 1 redaction</>}
+                {flattenedRedactions.length > 1 && (
+                  <>There are {flattenedRedactions.length} redactions</>
+                )}
+              </span>
               <button onClick={() => setRedactionsOnPageNumber({})}>
                 Clear all redactions
               </button>

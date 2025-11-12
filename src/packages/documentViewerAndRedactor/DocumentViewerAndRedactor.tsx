@@ -71,55 +71,71 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
       }
 `}</style>
       <ModeStyleTag mode={mode} />
-      <div
-        style={{
-          position: "relative",
-          height: "500px",
-          width: "100%",
-          overflowX: "scroll",
-          overflowY: "scroll",
-        }}
-      >
-        <Document
-          file={p.fileUrl}
-          onLoadSuccess={(x) => setNumPages(x.numPages)}
-        >
-          {[...Array(numPages)].map((_, j) => (
-            <DocumentViewerAndRedactorPage
-              key={j}
-              pageNumber={j + 1}
-              scale={scale}
-              onMouseMove={() => {}}
-              redactHighlightedTextTriggerData={
-                redactHighlightedTextTrigger.data
-              }
-              mode={mode}
-              setRedactions={(x) => {
-                setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
-              }}
-              redactions={redactionsOnPageNumber[j]}
-            />
-          ))}
-        </Document>
-      </div>
-      <br />
-      {flattenedRedactions.length > 0 && (
+      <div style={{ position: "relative" }}>
         <div
           style={{
-            background: "white",
-            color: "black",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "10px",
+            position: "relative",
+            height: "500px",
+            width: "100%",
+            overflowX: "scroll",
+            overflowY: "scroll",
           }}
         >
-          <span>There are {flattenedRedactions.length} redactions</span>
-          <button onClick={() => setRedactionsOnPageNumber({})}>
-            Clear all redactions
-          </button>
+          <Document
+            file={p.fileUrl}
+            onLoadSuccess={(x) => setNumPages(x.numPages)}
+          >
+            {[...Array(numPages)].map((_, j) => (
+              <DocumentViewerAndRedactorPage
+                key={j}
+                pageNumber={j + 1}
+                scale={scale}
+                onMouseMove={() => {}}
+                redactHighlightedTextTriggerData={
+                  redactHighlightedTextTrigger.data
+                }
+                mode={mode}
+                setRedactions={(x) => {
+                  setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
+                }}
+                redactions={redactionsOnPageNumber[j]}
+              />
+            ))}
+            <br />
+            <br />
+            <br />
+            <br />
+          </Document>
         </div>
-      )}
+        {flattenedRedactions.length > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "25px",
+              left: 0,
+              right: 0,
+              zIndex: 10,
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid black",
+                background: "white",
+                color: "black",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px",
+              }}
+            >
+              <span>There are {flattenedRedactions.length} redactions</span>
+              <button onClick={() => setRedactionsOnPageNumber({})}>
+                Clear all redactions
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

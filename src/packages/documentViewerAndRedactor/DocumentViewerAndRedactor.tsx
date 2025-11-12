@@ -12,9 +12,35 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+const useScaleHelper = (p?: { initScale?: number }) => {
+  const [scale, setScale] = useState(p?.initScale ?? 1);
+
+  const increaseScale = () => setScale((prev) => (prev += 0.25));
+  const decreaseScale = () =>
+    setScale((prev) => {
+      const newScale = prev - 0.25;
+      return newScale <= 0 ? prev : newScale;
+    });
+  const resetScale = () => setScale(1);
+
+  return { scale, increaseScale, decreaseScale, resetScale };
+};
+
+const flattenRedactionsOnPageNumber = (redactionsOnPageNumber: {
+  [k: string]: TRedaction[];
+}) => {
+  const temp: TRedaction[] = [];
+  Object.entries(redactionsOnPageNumber).forEach(([pageNumber, redactions]) => {
+    redactions.forEach((redaction) => {
+      temp.push({ ...redaction, pageNumber: Number(pageNumber) });
+    });
+  });
+  return temp;
+};
+
 export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
   const [numPages, setNumPages] = useState<number>();
-  const [scale, setScale] = useState<number>(1);
+  const scaleHelper = useScaleHelper();
 
   const redactHighlightedTextTrigger = useTrigger();
 
@@ -24,45 +50,66 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
   }>({});
 
   const flattenedRedactions = useMemo(() => {
-    const temp: (TRedaction & { pageNumber: number })[] = [];
-    Object.entries(redactionsOnPageNumber).forEach(
-      ([pageNumber, redactions]) => {
-        redactions.forEach((redaction) => {
-          temp.push({ ...redaction, pageNumber: Number(pageNumber) });
-        });
-      }
-    );
-    return temp;
+    return flattenRedactionsOnPageNumber(redactionsOnPageNumber);
   }, [redactionsOnPageNumber]);
 
   return (
     <div>
-      <button
-        onClick={() =>
-          setMode((prev) =>
-            prev === "geometryRedact" ? "textRedact" : "geometryRedact"
-          )
-        }
-      >
-        Redaction mode
-      </button>
-      ({mode})
-      <br />
-      <button onClick={() => setScale((scale) => (scale += 0.25))}>++++</button>
-      <button onClick={() => setScale((scale) => (scale -= 0.25))}>----</button>
-      <button onClick={() => setScale(1)}>Reset</button>
-      <button
-        onClick={() => {
-          redactHighlightedTextTrigger.fire();
-
-          setTimeout(() => window.getSelection()?.removeAllRanges(), 250);
+      <ModeStyleTag mode={mode} />
+      <div
+        style={{
+          border: "1px solid black",
+          background: "white",
+          color: "black",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px",
         }}
       >
-        do something
-      </button>
-      Scale: {scale}
-      <br />
-      <ModeStyleTag mode={mode} />
+        <span style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+          <span>
+            <button
+              style={
+                mode === "geometryRedact"
+                  ? { background: "blue", color: "white" }
+                  : {}
+              }
+              onClick={() => setMode("geometryRedact")}
+            >
+              A
+            </button>
+            <button
+              style={
+                mode === "textRedact"
+                  ? { background: "blue", color: "white" }
+                  : {}
+              }
+              onClick={() => setMode("textRedact")}
+            >
+              T
+            </button>
+          </span>
+          {mode === "textRedact" && (
+            <button
+              style={{ background: "red" }}
+              onClick={() => {
+                redactHighlightedTextTrigger.fire();
+
+                setTimeout(() => window.getSelection()?.removeAllRanges(), 250);
+              }}
+            >
+              T
+            </button>
+          )}
+        </span>
+        <span style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+          <span>x{scaleHelper.scale.toFixed(2)}</span>
+          <button onClick={() => scaleHelper.increaseScale()}>+</button>
+          <button onClick={() => scaleHelper.decreaseScale()}>-</button>
+          <button onClick={() => scaleHelper.resetScale()}>Reset</button>
+        </span>
+      </div>
       <div style={{ position: "relative" }}>
         <div
           style={{
@@ -76,13 +123,16 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
         >
           <Document
             file={p.fileUrl}
-            onLoadSuccess={(x) => setNumPages(x.numPages)}
+            onLoadSuccess={(x) => {
+              setRedactionsOnPageNumber(() => ({}));
+              setNumPages(x.numPages);
+            }}
           >
             {[...Array(numPages)].map((_, j) => (
               <DocumentViewerAndRedactorPage
                 key={j}
                 pageNumber={j + 1}
-                scale={scale}
+                scale={scaleHelper.scale}
                 onMouseMove={() => {}}
                 redactHighlightedTextTriggerData={
                   redactHighlightedTextTrigger.data

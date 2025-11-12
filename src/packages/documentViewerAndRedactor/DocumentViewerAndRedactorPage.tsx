@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Page } from "react-pdf";
 import {
   PositionPdfOverlayBox,
@@ -113,7 +113,7 @@ export const DocumentViewerAndRedactorPage = (p: {
                   requestAnimationFrameRef.current = null;
                 });
               }}
-              onMouseLeave={() => setMousePos(null)}
+              // onMouseLeave={() => setMousePos(null)}
             />
             {firstCorner &&
               mousePos &&

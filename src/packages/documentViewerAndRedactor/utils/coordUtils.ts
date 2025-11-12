@@ -1,5 +1,11 @@
 export type TCoord = { x: number; y: number };
 export type TCoordPair = { x1: number; y1: number; x2: number; y2: number };
+export type TXywhPair = {
+  xLeft: number;
+  yBottom: number;
+  width: number;
+  height: number;
+};
 export type TRedaction = TCoordPair & { id: string; pageNumber: number };
 
 export const convertCoordPairToXywh = (p: TCoordPair) => {

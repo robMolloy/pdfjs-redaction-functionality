@@ -5,11 +5,93 @@ import {
   getPdfCoords,
   type TCoord,
   type TRedaction,
+  type TXywhPair,
 } from "./utils/coordUtils";
 import { createId } from "./utils/generalUtils";
 import { getPdfCoordPairsOfHighlightedText } from "./utils/highlightedTextUtils";
 import type { TMode } from "./utils/modeUtils";
 import { useTriggerListener, type TTriggerData } from "./utils/useTriggger";
+
+const PositionPdfOverlayBox = (
+  p: TXywhPair & { scale: number; children: React.ReactNode }
+) => {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: `${p.xLeft * p.scale}px`,
+        bottom: `${p.yBottom * p.scale}px`,
+        width: `${p.width * p.scale}px`,
+        height: `${p.height * p.scale}px`,
+      }}
+    >
+      {p.children}
+    </div>
+  );
+};
+
+const CloseIcon = (p: { onCloseClick: () => void }) => {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: "-10px",
+        right: "-10px",
+        cursor: "pointer",
+        background: "white",
+        border: "1px solid black",
+        borderRadius: "50%",
+        width: "20px",
+        height: "20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: "bold",
+        color: "black",
+        zIndex: 10,
+      }}
+      onClick={() => p.onCloseClick()}
+    >
+      X
+    </div>
+  );
+};
+
+const RedactionBox = (p: { onCloseClick: () => void }) => {
+  return (
+    <div
+      style={{
+        background: "rgba(255, 0, 0, 0.3)",
+        border: "2px solid red",
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "-10px",
+          right: "-10px",
+          cursor: "pointer",
+          background: "white",
+          border: "1px solid black",
+          borderRadius: "50%",
+          width: "20px",
+          height: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          color: "black",
+          zIndex: 10,
+        }}
+        onClick={() => p.onCloseClick()}
+      >
+        X
+      </div>
+    </div>
+  );
+};
 
 export const DocumentViewerAndRedactorPage = (p: {
   onMouseMove: (p: { x: number; y: number } | null) => void;
@@ -26,6 +108,7 @@ export const DocumentViewerAndRedactorPage = (p: {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(
     null
   );
+  useEffect(() => setFirstCorner(null), [p.mode]);
   useEffect(() => p.onMouseMove(mousePos), [mousePos]);
 
   useTriggerListener({
@@ -50,29 +133,6 @@ export const DocumentViewerAndRedactorPage = (p: {
 
   const pdfPageWrapperElmRef = useRef<HTMLDivElement | null>(null);
   const requestAnimationFrameRef = useRef<number | null>(null);
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (requestAnimationFrameRef.current) return;
-
-    const target = e.target as HTMLDivElement;
-    if (!target.className.includes("react-pdf__Page__textContent")) return;
-
-    requestAnimationFrameRef.current = requestAnimationFrame(() => {
-      const rect = target.getBoundingClientRect();
-
-      const screenX = e.clientX;
-      const screenY = e.clientY;
-
-      const coord = getPdfCoords({
-        screenX,
-        screenY,
-        scale: p.scale,
-        pdfPageRect: rect,
-      });
-      setMousePos(coord);
-
-      requestAnimationFrameRef.current = null;
-    });
-  };
   useEffect(() => {
     return () => {
       if (requestAnimationFrameRef.current)
@@ -104,7 +164,30 @@ export const DocumentViewerAndRedactorPage = (p: {
               setFirstCorner(firstCorner ? null : mousePos);
             }}
             scale={p.scale}
-            onMouseMove={handleMouseMove}
+            onMouseMove={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+              if (requestAnimationFrameRef.current) return;
+
+              const target = e.target as HTMLDivElement;
+              if (!target.className.includes("react-pdf__Page__textContent"))
+                return;
+
+              requestAnimationFrameRef.current = requestAnimationFrame(() => {
+                const rect = target.getBoundingClientRect();
+
+                const screenX = e.clientX;
+                const screenY = e.clientY;
+
+                const coord = getPdfCoords({
+                  screenX,
+                  screenY,
+                  scale: p.scale,
+                  pdfPageRect: rect,
+                });
+                setMousePos(coord);
+
+                requestAnimationFrameRef.current = null;
+              });
+            }}
             onMouseLeave={() => setMousePos(null)}
           />
           {firstCorner &&
@@ -136,6 +219,23 @@ export const DocumentViewerAndRedactorPage = (p: {
           {redactions?.map((box, i) => {
             const { xLeft, yBottom, width, height } =
               convertCoordPairToXywh(box);
+
+            return (
+              <PositionPdfOverlayBox
+                key={i}
+                xLeft={xLeft}
+                yBottom={yBottom}
+                width={width}
+                height={height}
+                scale={p.scale}
+              >
+                <RedactionBox
+                  onCloseClick={() => {
+                    setRedactions(redactions?.filter((x) => x.id !== box.id));
+                  }}
+                />
+              </PositionPdfOverlayBox>
+            );
 
             return (
               <div

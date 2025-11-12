@@ -1,97 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Page } from "react-pdf";
 import {
+  PositionPdfOverlayBox,
+  RedactionBox,
+} from "./DocumentViewerComponents";
+import {
   convertCoordPairToXywh,
   getPdfCoords,
   type TCoord,
   type TRedaction,
-  type TXywhPair,
 } from "./utils/coordUtils";
 import { createId } from "./utils/generalUtils";
 import { getPdfCoordPairsOfHighlightedText } from "./utils/highlightedTextUtils";
 import type { TMode } from "./utils/modeUtils";
 import { useTriggerListener, type TTriggerData } from "./utils/useTriggger";
-
-const PositionPdfOverlayBox = (
-  p: TXywhPair & { scale: number; children: React.ReactNode }
-) => {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: `${p.xLeft * p.scale}px`,
-        bottom: `${p.yBottom * p.scale}px`,
-        width: `${p.width * p.scale}px`,
-        height: `${p.height * p.scale}px`,
-      }}
-    >
-      {p.children}
-    </div>
-  );
-};
-
-const CloseIcon = (p: { onCloseClick: () => void }) => {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: "-10px",
-        right: "-10px",
-        cursor: "pointer",
-        background: "white",
-        border: "1px solid black",
-        borderRadius: "50%",
-        width: "20px",
-        height: "20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: "bold",
-        color: "black",
-        zIndex: 10,
-      }}
-      onClick={() => p.onCloseClick()}
-    >
-      X
-    </div>
-  );
-};
-
-const RedactionBox = (p: { onCloseClick: () => void }) => {
-  return (
-    <div
-      style={{
-        background: "rgba(255, 0, 0, 0.3)",
-        border: "2px solid red",
-        height: "100%",
-        width: "100%",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: "-10px",
-          right: "-10px",
-          cursor: "pointer",
-          background: "white",
-          border: "1px solid black",
-          borderRadius: "50%",
-          width: "20px",
-          height: "20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: "bold",
-          color: "black",
-          zIndex: 10,
-        }}
-        onClick={() => p.onCloseClick()}
-      >
-        X
-      </div>
-    </div>
-  );
-};
 
 export const DocumentViewerAndRedactorPage = (p: {
   onMouseMove: (p: { x: number; y: number } | null) => void;
@@ -201,18 +123,18 @@ export const DocumentViewerAndRedactorPage = (p: {
               });
 
               return (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: `${xLeft * p.scale}px`,
-                    bottom: `${yBottom * p.scale}px`,
-                    width: `${width * p.scale}px`,
-                    height: `${height * p.scale}px`,
-                    background: "rgba(0, 0, 255, 0.2)",
-                    border: "2px dashed blue",
-                    pointerEvents: "none",
-                  }}
-                />
+                <PositionPdfOverlayBox
+                  xLeft={xLeft}
+                  yBottom={yBottom}
+                  width={width}
+                  height={height}
+                  scale={p.scale}
+                >
+                  <RedactionBox
+                    background="rgba(0, 0, 255, 0.2)"
+                    border="2px dashed blue"
+                  />
+                </PositionPdfOverlayBox>
               );
             })()}
 
@@ -230,51 +152,13 @@ export const DocumentViewerAndRedactorPage = (p: {
                 scale={p.scale}
               >
                 <RedactionBox
-                  onCloseClick={() => {
-                    setRedactions(redactions?.filter((x) => x.id !== box.id));
-                  }}
+                  background="rgba(255, 0, 0, 0.3)"
+                  border="2px solid red"
+                  onCloseClick={() =>
+                    setRedactions(redactions?.filter((x) => x.id !== box.id))
+                  }
                 />
               </PositionPdfOverlayBox>
-            );
-
-            return (
-              <div
-                key={i}
-                style={{
-                  position: "absolute",
-                  left: `${xLeft * p.scale}px`,
-                  bottom: `${yBottom * p.scale}px`,
-                  width: `${width * p.scale}px`,
-                  height: `${height * p.scale}px`,
-                  background: "rgba(255, 0, 0, 0.3)",
-                  border: "2px solid red",
-                }}
-              >
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "-10px",
-                    right: "-10px",
-                    cursor: "pointer",
-                    background: "white",
-                    border: "1px solid black",
-                    borderRadius: "50%",
-                    width: "20px",
-                    height: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: "bold",
-                    color: "black",
-                    zIndex: 10,
-                  }}
-                  onClick={() => {
-                    setRedactions(redactions?.filter((x) => x.id !== box.id));
-                  }}
-                >
-                  ×
-                </div>
-              </div>
             );
           })}
         </div>

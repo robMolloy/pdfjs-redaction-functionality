@@ -67,7 +67,6 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
       <style>{`
       .react-pdf__Page {
         background-color: gray !important;
-        display: flex;
       }
 `}</style>
       <ModeStyleTag mode={mode} />

@@ -92,9 +92,7 @@ export const DocumentViewerAndRedactorPage = (p: {
                 setFirstCorner(firstCorner ? null : mousePos);
               }}
               scale={p.scale}
-              onMouseMove={(
-                e: React.MouseEvent<HTMLDivElement, MouseEvent>
-              ) => {
+              onMouseMove={(e) => {
                 if (requestAnimationFrameRef.current) return;
 
                 const target = e.target as HTMLDivElement;
@@ -104,12 +102,9 @@ export const DocumentViewerAndRedactorPage = (p: {
                 requestAnimationFrameRef.current = requestAnimationFrame(() => {
                   const rect = target.getBoundingClientRect();
 
-                  const screenX = e.clientX;
-                  const screenY = e.clientY;
-
                   const coord = getPdfCoords({
-                    screenX,
-                    screenY,
+                    screenX: e.clientX,
+                    screenY: e.clientY,
                     scale: p.scale,
                     pdfPageRect: rect,
                   });

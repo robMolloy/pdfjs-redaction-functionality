@@ -19,13 +19,11 @@ export const OfficialPdfViewer = () => {
             console.log(`OfficialPdfViewer.tsx:${/*LL*/ 16}`, { change });
           }}
           onAddRedactions={(add) => {
-            setRedactionDetails((prev) => [
-              ...prev,
-              ...add.map((x) => ({
-                redactionId: x.id,
-                randomId: `This redaction does ${createId()}`,
-              })),
-            ]);
+            const newRedactions = add.map((x) => ({
+              redactionId: x.id,
+              randomId: `This redaction does ${createId()}`,
+            }));
+            setRedactionDetails((prev) => [...prev, ...newRedactions]);
           }}
           onRemoveRedactions={(remove) => {
             setRedactionDetails((prev) =>

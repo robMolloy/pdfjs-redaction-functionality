@@ -60,6 +60,7 @@ export const DocumentViewerAndRedactor = (p: { fileUrl: string }) => {
       <div
         style={{
           border: "1px solid black",
+
           background: "white",
           color: "black",
           display: "flex",

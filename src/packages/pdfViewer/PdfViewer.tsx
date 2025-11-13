@@ -1,17 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Document, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-import { AreaIcon } from './icons/AreaIcon';
-import { EditIcon } from './icons/EditIcon';
-import { TickCircleIcon } from './icons/TickCircleIcon';
-import { PdfViewerPage } from './PdfViewerPage';
-import type { TRedaction } from './utils/coordUtils';
-import { ModeStyleTag, type TMode } from './utils/modeUtils';
-import { useTrigger } from './utils/useTriggger';
+import { useEffect, useMemo, useState } from "react";
+import { Document, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+import { AreaIcon } from "./icons/AreaIcon";
+import { EditIcon } from "./icons/EditIcon";
+import { TickCircleIcon } from "./icons/TickCircleIcon";
+import { PdfViewerPage } from "./PdfViewerPage";
+import type { TRedaction } from "./utils/coordUtils";
+import { ModeStyleTag, type TMode } from "./utils/modeUtils";
+import { useTrigger } from "./utils/useTriggger";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
+  "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 
@@ -41,13 +41,19 @@ const flattenRedactionsOnPageNumber = (redactionsOnPageNumber: {
   return temp;
 };
 
-export const PdfViewer = (p: { fileUrl: string }) => {
+export const PdfViewer = (p: {
+  fileUrl: string;
+  onRedactionsChange: (redactions: TRedaction[]) => void;
+  onAddRedactions: (redactions: TRedaction[]) => void;
+  onRemoveRedactions: (redactionIds: string[]) => void;
+  onSaveRedactions: (redactions: TRedaction[]) => void;
+}) => {
   const [numPages, setNumPages] = useState<number>();
   const scaleHelper = useScaleHelper();
 
   const redactHighlightedTextTrigger = useTrigger();
 
-  const [mode, setMode] = useState<TMode>('areaRedact');
+  const [mode, setMode] = useState<TMode>("areaRedact");
   const [redactionsOnPageNumber, setRedactionsOnPageNumber] = useState<{
     [k: number]: TRedaction[];
   }>({});
@@ -56,36 +62,44 @@ export const PdfViewer = (p: { fileUrl: string }) => {
     return flattenRedactionsOnPageNumber(redactionsOnPageNumber);
   }, [redactionsOnPageNumber]);
 
+  useEffect(() => {
+    p.onRedactionsChange(flattenedRedactions);
+  }, [flattenedRedactions]);
+
   return (
     <div>
       <ModeStyleTag mode={mode} />
       <div
         style={{
-          border: '1px solid black',
-          background: 'white',
-          color: 'black',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '10px'
+          border: "1px solid black",
+          background: "white",
+          color: "black",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "10px",
         }}
       >
-        <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        <span style={{ display: "flex", gap: "4px", alignItems: "center" }}>
           <span>
             <button
-              className={`govuk-button ${mode === 'areaRedact' ? '' : 'govuk-button--secondary'}`}
-              onClick={() => setMode('areaRedact')}
+              className={`govuk-button ${
+                mode === "areaRedact" ? "" : "govuk-button--secondary"
+              }`}
+              onClick={() => setMode("areaRedact")}
             >
               <AreaIcon width={20} height={20} />
             </button>
             <button
-              className={`govuk-button ${mode === 'textRedact' ? '' : 'govuk-button--secondary'}`}
-              onClick={() => setMode('textRedact')}
+              className={`govuk-button ${
+                mode === "textRedact" ? "" : "govuk-button--secondary"
+              }`}
+              onClick={() => setMode("textRedact")}
             >
               <EditIcon width={20} height={20} />
             </button>
           </span>
-          {mode === 'textRedact' && (
+          {mode === "textRedact" && (
             <button
               className="govuk-button govuk-button--secondary"
               onClick={() => {
@@ -98,7 +112,7 @@ export const PdfViewer = (p: { fileUrl: string }) => {
           )}
         </span>
 
-        <span style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        <span style={{ display: "flex", gap: "4px", alignItems: "center" }}>
           <span>x{scaleHelper.scale.toFixed(2)}</span>
           <button
             className="govuk-button govuk-button--secondary"
@@ -120,15 +134,15 @@ export const PdfViewer = (p: { fileUrl: string }) => {
           </button>
         </span>
       </div>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: "relative" }}>
         <div
           style={{
-            position: 'relative',
-            height: '500px',
-            width: '100%',
-            overflowX: 'scroll',
-            overflowY: 'scroll',
-            backgroundColor: 'gray'
+            position: "relative",
+            height: "500px",
+            width: "100%",
+            overflowX: "scroll",
+            overflowY: "scroll",
+            backgroundColor: "gray",
           }}
         >
           <Document
@@ -148,10 +162,14 @@ export const PdfViewer = (p: { fileUrl: string }) => {
                   redactHighlightedTextTrigger.data
                 }
                 mode={mode}
-                setRedactions={(x) => {
+                onRedactionsChange={(x) => {
                   setRedactionsOnPageNumber((prev) => ({ ...prev, [j]: x }));
                 }}
-                redactions={redactionsOnPageNumber[j]}
+                onAddRedactions={(x) => {
+                  p.onAddRedactions(x);
+                }}
+                onRemoveRedactions={(x) => p.onRemoveRedactions(x)}
+                redactions={redactionsOnPageNumber[j] ?? []}
               />
             ))}
             <br />
@@ -162,32 +180,35 @@ export const PdfViewer = (p: { fileUrl: string }) => {
         {flattenedRedactions.length > 0 && (
           <div
             style={{
-              position: 'absolute',
-              bottom: '25px',
+              position: "absolute",
+              bottom: "25px",
               left: 0,
               right: 0,
-              zIndex: 10
+              zIndex: 10,
             }}
           >
             <div
               style={{
-                border: '1px solid black',
-                background: 'white',
-                color: 'black',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '10px'
+                border: "1px solid black",
+                background: "white",
+                color: "black",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px",
               }}
             >
               <button
                 className="govuk-button govuk-button--inverse"
-                onClick={() => setRedactionsOnPageNumber({})}
+                onClick={() => {
+                  p.onRemoveRedactions(flattenedRedactions.map((x) => x.id));
+                  setRedactionsOnPageNumber({});
+                }}
               >
                 Remove all redactions
               </button>
               <span
-                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+                style={{ display: "flex", gap: "8px", alignItems: "center" }}
               >
                 <span>
                   {flattenedRedactions.length === 1 && (
@@ -197,7 +218,12 @@ export const PdfViewer = (p: { fileUrl: string }) => {
                     <>There are {flattenedRedactions.length} redactions</>
                   )}
                 </span>
-                <button className="govuk-button">Save all redactions</button>
+                <button
+                  className="govuk-button"
+                  onClick={() => p.onSaveRedactions(flattenedRedactions)}
+                >
+                  Save all redactions
+                </button>
               </span>
             </div>
           </div>

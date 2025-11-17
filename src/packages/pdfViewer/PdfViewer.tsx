@@ -211,12 +211,11 @@ export const PdfViewer = (p: {
                 style={{ display: "flex", gap: "8px", alignItems: "center" }}
               >
                 <span>
-                  {flattenedRedactions.length === 1 && (
-                    <>There is 1 redaction</>
-                  )}
-                  {flattenedRedactions.length > 1 && (
-                    <>There are {flattenedRedactions.length} redactions</>
-                  )}
+                  {(() => {
+                    if (flattenedRedactions.length === 1)
+                      return `There is 1 redaction`;
+                    return `There are ${flattenedRedactions.length} redactions`;
+                  })()}
                 </span>
                 <button
                   className="govuk-button"
